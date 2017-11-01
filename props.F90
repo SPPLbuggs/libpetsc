@@ -63,10 +63,16 @@
     g%w   = w
     
     xtemp = 2.5 / float(g%nx+1)
+    allocate(x(g%bx+2), g%dx(g%bx+1), g%dlx(g%bx) )
+
     if (unif) then
-        x = (/ (g%l / float(g%bx+1) * (g%offx + i - 1), i = 1, g%bx+2) /)
+        do i = 1, g%bx+2
+            x(i) = g%l / float(g%bx+1) * (g%offx + i - 1)
+        end do
     else
-        x = (/ (tanh(-1.25 + xtemp * (g%offx + i - 1)), i = 1, g%bx+2) /)
+        do i = 1, g%bx+2
+            x(i) = tanh(-1.25 + xtemp * (g%offx + i - 1))
+        end do
     end if
     
     xtemp = x(1)
@@ -78,17 +84,28 @@
     x = x / xtemp
     x = x * g%l
     
-    g%dx = (/ (x(i+1) - x(i), i = 1, g%bx+1) /)
-    g%dlx = (/ (0.5 * (g%dx(i+1) + g%dx(i)), i = 1, g%bx) /)
-    
+    do i = 1, g%bx+1
+        g%dx(i) = x(i+1) - x(i)
+    end do
+
+    do i = 1, g%bx
+        g%dlx(i) = 0.5 * (g%dx(i+1) + g%dx(i))
+    end do
+
     if (g%ny > 1) then
+        allocate( y(g%by+2), g%dy(g%by+1), g%dly(g%by) )
         ytemp = 1.25 / float(g%ny+1)
-        if (unif) then
-            y = (/ (g%w / float(g%by+1) * (g%offy + j - 1), j = 1, g%by+2) /)
-        else
-            y = (/ (tanh(-1.25 + ytemp * (g%offy + j - 1)), j = 1, g%by+2) /)
-        end if
     
+        if (unif) then
+            do j = 1, g%by+2
+                y(j) = g%w / float(g%by+1) * (g%offy + j - 1)
+            end do
+        else
+            do j = 1, g%by+2
+                y(j) = tanh(-1.25 + ytemp * (g%offy + j - 1))
+            end do
+        end if
+
         ytemp = y(1)
         call MPI_Bcast( ytemp, 1, MPI_Real8, 0, comm, ierr)
         y = y - ytemp
@@ -97,16 +114,20 @@
         call MPI_Bcast( ytemp, 1, MPI_Real8, nproc-1, comm, ierr)
         y = y / ytemp
         y = y * g%w
-    
-        g%dy = (/ ( y(j+1) - y(j), j = 1, g%by+1) /)
-        g%dly = (/ (0.5 * (g%dy(j+1) + g%dy(j)), j = 1, g%by) /)
+
+        do j = 1, g%by+1
+            g%dy(j) = y(j+1) - y(j)
+        end do
+
+        do j = 1, g%by
+            g%dly(j) = 0.5 * (g%dy(j+1) + g%dy(j))
+        end do
     else
-        allocate(g%dy(1))
+        allocate(g%dy(1), y(1))
         g%dy = g%dx(1)
-        ytemp = g%offy * g%dy(1)
-        y = (/ (ytemp + g%dy * (j - 1), j = 1, g%by) /)
+        y = 1
     end if
-    
+
     ! Define node types
     allocate(g%type_x(g%bx,g%by), g%type_y(g%bx,g%by))
     g%type_x = 0
@@ -121,7 +142,7 @@
             if ((rx == px-1) .and. (i == g%bx)) g%type_x(i,j) =  1
         end do
     end do
-    
+
     g%dof   = dof
     g%nloc  = g%bx * g%by * g%dof
     g%nglob = g%nx * g%ny * g%dof
@@ -138,7 +159,7 @@
         
         call comm_int(g%bx, g%by, g%node(:,:,d))
     end do
-    
+
     ! MPI-IO Variables
     amode = MPI_Mode_WRonly + MPI_Mode_Create + MPI_Mode_EXCL
     etype = MPI_Real8
@@ -193,7 +214,6 @@
     call MPI_Type_Commit(glob_array, ierr)
     
     call MPI_Barrier(comm, ierr)
-    
     end subroutine
 
 ! *** Communicate data across processors
