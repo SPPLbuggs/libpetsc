@@ -18,15 +18,15 @@
     call cpu_time(sim_start)
     
     ! Default properties
-    nx = 10
-    ny = 10
+    nx = 50
+    ny = 1
     px = 1
     py = 1
-    dof = 2
+    dof = 1
     l  = 1
     w  = 1
     t_fin = 10
-    t_pr = t_fin/1000.
+    t_pr = t_fin/100.
     t_sv = t_fin/100.
     
     ! Check for -help
@@ -101,58 +101,52 @@
     allocate(f(g%bx+2, g%by+2, g%dof))
     f = 0
     
+    g%t  = 0
+    g%dt = 5e-3
+    
     ! Create PETSc Objects
     call petsc_create(g, A1, b1, x1)
     
-    ! Assemble jacobian and RHS
-    call assem_Ab(g, A1, b1, f, feval)
-    
-    ! View jacobian and RHS
-    !call view(A1, b1)
-
-    ! Solve system:
-    call KSPSetOperators(ksp, A1, A1, ierr)
-    call KSPSolve(ksp, b1, x1, ierr)
-    
-    call KSPGetConvergedReason(ksp, conv, ierr)
-    if ((my_id == 0) .and. (conv .ne. 2)) write(*,3) conv
-    3 format('KSP did not converge; Reason = ',i0)
-    
-    ! Update variables with solution:
-    call upd_soln(g, x1, f)
-    
-    do i = 1, g%dof
-        write(*,*)
-        write(*,1) f(2:g%bx+1,2:g%by+1,i)
-    end do
-    1 format(10f7.2)
-    
-    if (.false.) then
-        do
-            ts = ts + 1
-            g%t = g%t + g%dt
-            if (g%t >= t_fin) exit
-            
-            
-            if ((t_pr <= g%t) .and. (my_id == 0)) then
-                call cpu_time(time)
-                write(*,*)
-                write(*,11) float(ts), g%t, g%dt, time - sim_start
-                t_pr = t_pr + t_fin/1000.
-            end if
+    do
+        ts = ts + 1
+        g%t = g%t + g%dt
+        if (g%t >= t_fin) exit
         
-            if (t_sv <= g%t) then
-                call savedat(trim(path)//'n.dat', f(:,:,1))
-                
-                call MPI_File_Open(comm, trim(path)//'time.dat', &
-                    MPI_MODE_WRonly + MPI_Mode_Append,  info, fh, ierr)
-                if (my_id == 0) call MPI_File_Write(fh, g%t, 1, etype, stat, ierr)
-                call MPI_File_Close(fh, ierr)
-                
-                t_sv  = t_sv + t_fin/100.
-            end if
-        end do
-    end if
+        ! Assemble jacobian and RHS
+        call assem_Ab(g, A1, b1, f, feval)
+        if (ts == 1) then
+            call MatSetOption(A1, Mat_New_Nonzero_Locations, PETSc_False, ierr)
+        end if
+        
+        ! Solve system:
+        call KSPSetOperators(ksp, A1, A1, ierr)
+        call KSPSolve(ksp, b1, x1, ierr)
+        
+        call KSPGetConvergedReason(ksp, conv, ierr)
+        if ((my_id == 0) .and. (conv .ne. 2)) write(*,3) conv
+        3 format('KSP did not converge; Reason = ',i0)
+        
+        ! Update variables with solution:
+        call upd_soln(g, x1, f)
+        
+        if ((t_pr <= g%t) .and. (my_id == 0)) then
+            call cpu_time(time)
+            write(*,*)
+            write(*,11) float(ts), g%t, g%dt, time - sim_start
+            t_pr = t_pr + t_fin/100.
+        end if
+    
+        if (t_sv <= g%t) then
+            call savedat(trim(path)//'n.dat', f(:,:,1))
+            
+            call MPI_File_Open(comm, trim(path)//'time.dat', &
+                MPI_MODE_WRonly + MPI_Mode_Append,  info, fh, ierr)
+            if (my_id == 0) call MPI_File_Write(fh, g%t, 1, etype, stat, ierr)
+            call MPI_File_Close(fh, ierr)
+            
+            t_sv  = t_sv + t_fin/100.
+        end if
+    end do
     
     if (my_id == 0) then
         call cpu_time(time)
@@ -165,7 +159,7 @@
     call petsc_destroy(A1, b1, x1)
     call PetscFinalize(ierr)
 
-11 format('Timestep:', es10.2, '  Time:', es10.2, '  dT:', es10.2, '  Dur:', es10.2)
+11 format('Timestep:', es9.2, '  Time:', es9.2, '  dT:', es9.2, '  Dur:', f5.2, ' sec')
 9  format('Simulation finished in ', i0, ' hr ', i0, ' min')
 
     end program

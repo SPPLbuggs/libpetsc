@@ -25,8 +25,7 @@
     real(8), intent(out) :: b
     real(8) :: V, dfdx = 0, dfdy = 0
     
-    !v = sin(2 * 3.14159 * g%t)
-    V = 1
+    V = sin(2.0 * 3.14159 * g%t / 3.0)
     
     if (g%nx > 1) then
         if (g%type_x(i-1,j-1) == -1) then
@@ -59,8 +58,7 @@
     real(8), intent(out) :: b
     real(8) :: V, dfdx = 0, dfdy = 0
     
-    !v = sin(2 * 3.14159 * g%t)
-    V = 1
+    V = sin(2 * 3.14159 * g%t)
     
     if (g%nx > 1) then
         if (g%type_x(i-1,j-1) == -1) then
