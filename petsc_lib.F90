@@ -205,8 +205,8 @@
         do j = 2, g%by+1
             do i = 2, g%bx+1
                 nn = g%node(i,j, d)
-                call VecGetValues(x, g%dof, nn, soln, ierr)        
-                f(i,j,:) = f(i,j,:) + soln
+                call VecGetValues(x, 1, nn, soln, ierr)        
+                f(i,j,d) = f(i,j,d) + soln(1)
             end do
         end do
         

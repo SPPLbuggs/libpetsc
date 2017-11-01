@@ -5,7 +5,7 @@
     implicit none
     
     type(grid) :: g
-    integer :: i, ts = 0, nx, ny, narg, conv
+    integer :: i, ts = 0, nx, ny, dof, narg, conv
     real(8) :: l, w, t_fin, t_pr, t_sv, sim_start, time
     character(80):: arg, path
     
@@ -22,6 +22,7 @@
     ny = 10
     px = 1
     py = 1
+    dof = 2
     l  = 1
     w  = 1
     t_fin = 10
@@ -96,7 +97,7 @@
     end if
     
     path = 'Output/'
-    call g_init(g, nx, ny, px, py, l, w, trim(path))
+    call g_init(g, nx, ny, px, py, dof, l, w, trim(path))
     allocate(f(g%bx+2, g%by+2, g%dof))
     f = 0
     

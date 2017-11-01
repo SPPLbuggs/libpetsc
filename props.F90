@@ -23,10 +23,10 @@
     contains
     
     ! *** Initialize Grid ***
-    subroutine g_init(g, nx, ny, px, py, l, w, path)
+    subroutine g_init(g, nx, ny, px, py, dof, l, w, path)
     type(grid), intent(inout) :: g
     real(8), intent(in) :: l, w
-    integer, intent(in) :: nx, ny, px, py
+    integer, intent(in) :: nx, ny, px, py, dof
     character(*), intent(in) :: path
     integer :: i, j, d
     real(8) :: xtemp, ytemp
@@ -122,7 +122,7 @@
         end do
     end do
     
-    g%dof   = 1
+    g%dof   = dof
     g%nloc  = g%bx * g%by * g%dof
     g%nglob = g%nx * g%ny * g%dof
     
