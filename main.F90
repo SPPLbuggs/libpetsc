@@ -1,0 +1,189 @@
+    program main
+    use props
+    use petsc_lib
+    use eqn_lib
+    implicit none
+    
+    type(grid) :: g
+    integer :: i, ts = 0, nx, ny, narg, conv
+    real(8) :: l, w, t_fin, t_pr, t_sv, sim_start, time
+    character(80):: arg, path
+    
+    call PetscInitialize(petsc_null_character, ierr)
+    comm = PETSC_COMM_WORLD
+    
+    call MPI_Comm_rank(comm, my_id, ierr)
+    call MPI_Comm_size(comm, nproc, ierr)
+    
+    call cpu_time(sim_start)
+    
+    ! Default properties
+    nx = 10
+    ny = 10
+    px = 1
+    py = 1
+    l  = 1
+    w  = 1
+    t_fin = 10
+    t_pr = t_fin/1000.
+    t_sv = t_fin/100.
+    
+    ! Check for -help
+    narg = iargc()
+    if (mod(narg,2) .ne. 0) then
+        if (my_id == 0) then
+            write(*,*)
+            write(*,*) 'Usage:   mpiexec -n <nproc> ./main <options>'
+            write(*,*) 'Options: -nx <nx>, -ny <ny>, -px <px>, -py <py>'
+            write(*,*) '         -l <l>, -w <w>, -t <t>, -unif <T/F>'
+            write(*,*)
+        end if
+        call MPI_Finalize(ierr)
+        stop
+    end if
+    
+    ! Read input arguments
+    do i = 1, narg/2
+        call getarg(2 * (i - 1) + 1, arg)
+        select case (arg)
+            case ('-nx')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) nx
+            case ('-ny')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) ny
+            case ('-px')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) px
+            case ('-py')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) py
+            case ('-l')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) l
+            case ('-w')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) w
+            case ('-t')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) t_fin
+            case ('-unif')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) unif
+        end select
+    end do
+    
+    if (px * py .ne. nproc) then
+        if (my_id == 0) then
+            write(*,*) 'Error: px * py must equal nproc. Stop.'
+            write(*,*) '       Enter ./main -help for usage.'
+            call MPI_Abort(comm,2,ierr)
+        end if
+    end if
+    if (mod(nx,px) .ne. 0) then
+        if (my_id == 0) then
+            write(*,*) 'Error: px needs to divide nx. Stop.'
+            write(*,*) '       Enter ./main -help for usage.'
+            call MPI_Abort(comm,3,ierr)
+        end if
+    end if
+    if (mod(ny,py) .ne. 0) then
+        if (my_id == 0) then
+            write(*,*) 'Error: py needs to divide ny. Stop.'
+            write(*,*) '       Enter ./main -help for usage.'
+            call MPI_Abort(comm,4,ierr)
+        end if
+    end if
+    
+    path = 'Output/'
+    call g_init(g, nx, ny, px, py, l, w, trim(path))
+    allocate(f(g%bx+2, g%by+2, g%dof))
+    f = 0
+    
+    ! Create PETSc Objects
+    call petsc_create(g, A1, b1, x1)
+    
+    ! Assemble jacobian and RHS
+    call assem_Ab(g, A1, b1, f, feval)
+    
+    ! View jacobian and RHS
+    !call view(A1, b1)
+
+    ! Solve system:
+    call KSPSetOperators(ksp, A1, A1, ierr)
+    call KSPSolve(ksp, b1, x1, ierr)
+    
+    call KSPGetConvergedReason(ksp, conv, ierr)
+    if ((my_id == 0) .and. (conv .ne. 2)) write(*,3) conv
+    3 format('KSP did not converge; Reason = ',i0)
+    
+    ! Update variables with solution:
+    call upd_soln(g, x1, f)
+    
+    do i = 1, g%dof
+        write(*,*)
+        write(*,1) f(2:g%bx+1,2:g%by+1,i)
+    end do
+    1 format(10f7.2)
+    
+    if (.false.) then
+        do
+            ts = ts + 1
+            g%t = g%t + g%dt
+            if (g%t >= t_fin) exit
+            
+            
+            if ((t_pr <= g%t) .and. (my_id == 0)) then
+                call cpu_time(time)
+                write(*,*)
+                write(*,11) float(ts), g%t, g%dt, time - sim_start
+                t_pr = t_pr + t_fin/1000.
+            end if
+        
+            if (t_sv <= g%t) then
+                call savedat(trim(path)//'n.dat', f(:,:,1))
+                
+                call MPI_File_Open(comm, trim(path)//'time.dat', &
+                    MPI_MODE_WRonly + MPI_Mode_Append,  info, fh, ierr)
+                if (my_id == 0) call MPI_File_Write(fh, g%t, 1, etype, stat, ierr)
+                call MPI_File_Close(fh, ierr)
+                
+                t_sv  = t_sv + t_fin/100.
+            end if
+        end do
+    end if
+    
+    if (my_id == 0) then
+        call cpu_time(time)
+        write(*,*)
+        write(*,9) int(time - sim_start) / 3600, &
+                    mod(int(time - sim_start)/60,60)
+        write(*,*)
+    end if
+    
+    call petsc_destroy(A1, b1, x1)
+    call PetscFinalize(ierr)
+
+11 format('Timestep:', es10.2, '  Time:', es10.2, '  dT:', es10.2, '  Dur:', es10.2)
+9  format('Simulation finished in ', i0, ' hr ', i0, ' min')
+
+    end program
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
