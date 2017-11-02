@@ -6,7 +6,7 @@
     
     type(grid) :: g
     integer :: i, iter, ts = 0, nx, ny, dof, narg, conv
-    real(8) :: l, w, t_fin, t_pr, t_sv, sim_start, time, relErr
+    real(8) :: l, w, dt, t_fin, t_pr, t_sv, sim_start, time, relErr
     character(80):: arg, path
     
     call PetscInitialize(petsc_null_character, ierr)
@@ -25,6 +25,7 @@
     dof = 2
     l  = 1
     w  = 1
+    dt = 1e-2
     t_fin = 10
     t_pr = t_fin/100.
     t_sv = t_fin/100.
@@ -68,6 +69,9 @@
             case ('-t')
                 call getarg(2 * (i - 1) + 2, arg)
                 read(arg,*) t_fin
+            case ('-dt')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) dt
             case ('-unif')
                 call getarg(2 * (i - 1) + 2, arg)
                 read(arg,*) unif
@@ -105,7 +109,7 @@
     f_mi = f
     
     g%t  = 0
-    g%dt = 2e0
+    g%dt = dt
     
     ! Create PETSc Objects
     call petsc_create(g, A1, b1, x1)
@@ -116,8 +120,8 @@
         if (g%t >= t_fin) exit
         
         ! Update boundary conditions
-        if (rx == 0) f(1,:,1) = sin(2.0 * 3.14159 * g%t / 10.0)
-        if (ry == 0) f(:,1,1) = sin(2.0 * 3.14159 * g%t / 10.0)
+        if (rx == 0) f(1,:,1) = 1!sin(2.0 * 3.14159 * g%t / 10.0)
+        if (ry == 0) f(:,1,1) = 1!sin(2.0 * 3.14159 * g%t / 10.0)
         
         do iter = 1, 100
             ! Assemble jacobian and RHS
