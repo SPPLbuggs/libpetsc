@@ -56,8 +56,8 @@
     ! Create Linear Solver
     call KSPCreate(comm, ksp, ierr)
     call KSPSetOperators(ksp, A, A, ierr)
-    call KSPSetInitialGuessNonzero(ksp, PETSC_TRUE, ierr)
-    !call KSPSetTYpe(ksp, KSPIBCGS, ierr) !works well for poisson
+    !call KSPSetInitialGuessNonzero(ksp, PETSC_TRUE, ierr) !can be helpful
+    call KSPSetTYpe(ksp, KSPIBCGS, ierr) !works well for poisson
     call KSPSetFromOptions(ksp, ierr)
     
     end subroutine

@@ -22,7 +22,7 @@
     ny = 1
     px = 1
     py = 1
-    dof = 1
+    dof = 2
     l  = 1
     w  = 1
     t_fin = 10
@@ -105,15 +105,10 @@
     f_mi = f
     
     g%t  = 0
-    g%dt = 5e-3
+    g%dt = 2e0
     
     ! Create PETSc Objects
     call petsc_create(g, A1, b1, x1)
-    
-    g%dx = 1
-    g%dlx = 1
-    g%dy = 1
-    g%dly = 1
     
     do
         ts = ts + 1
@@ -121,11 +116,8 @@
         if (g%t >= t_fin) exit
         
         ! Update boundary conditions
-        if (rx == 0) f(1,:,1) = 1.0
-        
-        write(*,33) f(2:g%bx+1,2:g%by+1,1)
-        33 format(10f7.2)
-        read(*,*) iter
+        if (rx == 0) f(1,:,1) = sin(2.0 * 3.14159 * g%t / 10.0)
+        if (ry == 0) f(:,1,1) = sin(2.0 * 3.14159 * g%t / 10.0)
         
         do iter = 1, 100
             ! Assemble jacobian and RHS
@@ -134,13 +126,11 @@
                 call MatSetOption(A1, Mat_New_Nonzero_Locations, PETSc_False, ierr)
             end if
             
-            call view(A1, b1)
+            !call view(A1, b1)
             
             ! Check norm of residual
             call VecNorm(b1, norm_2, relErr, ierr)
             if (relErr < 1d-8) exit
-            
-            write(*,*) relErr
             
             ! Solve system:
             call KSPSetOperators(ksp, A1, A1, ierr)
@@ -165,7 +155,7 @@
     
         if (t_sv <= g%t) then
             call savedat(trim(path)//'f1.dat', f(:,:,1))
-            !call savedat(trim(path)//'f2.dat', f(:,:,2))
+            if (dof > 1) call savedat(trim(path)//'f2.dat', f(:,:,2))
             
             call MPI_File_Open(comm, trim(path)//'time.dat', &
                 MPI_MODE_WRonly + MPI_Mode_Append,  info, fh, ierr)
@@ -187,7 +177,7 @@
     call petsc_destroy(A1, b1, x1)
     call PetscFinalize(ierr)
 
-11 format('Timestep:', es9.2, '  Time:', es9.2, '  dT:', es9.2, '  Dur:', f5.2, ' sec')
+11 format('Timestep:', es9.2, '  Time:', es9.2, '  dT:', es9.2, '  Dur:', f6.2, ' sec')
 9  format('Simulation finished in ', i0, ' hr ', i0, ' min')
 
     end program
