@@ -22,7 +22,7 @@
     ny = 1
     px = 1
     py = 1
-    dof = 2
+    dof = 1
     l  = 1
     w  = 1
     t_fin = 10
@@ -110,16 +110,22 @@
     ! Create PETSc Objects
     call petsc_create(g, A1, b1, x1)
     
+    g%dx = 1
+    g%dlx = 1
+    g%dy = 1
+    g%dly = 1
+    
     do
         ts = ts + 1
         g%t = g%t + g%dt
         if (g%t >= t_fin) exit
         
+        ! Update boundary conditions
+        if (rx == 0) f(1,:,1) = 1.0
+        
         write(*,33) f(2:g%bx+1,2:g%by+1,1)
-        write(*,*)
-        write(*,33) f(2:g%bx+1,2:g%by+1,2)
-        33 format(f7.3)
-        read(*,*) i
+        33 format(10f7.2)
+        read(*,*) iter
         
         do iter = 1, 100
             ! Assemble jacobian and RHS
@@ -128,11 +134,13 @@
                 call MatSetOption(A1, Mat_New_Nonzero_Locations, PETSc_False, ierr)
             end if
             
-            !call view(A1, b1)
+            call view(A1, b1)
             
             ! Check norm of residual
             call VecNorm(b1, norm_2, relErr, ierr)
             if (relErr < 1d-8) exit
+            
+            write(*,*) relErr
             
             ! Solve system:
             call KSPSetOperators(ksp, A1, A1, ierr)
@@ -157,7 +165,7 @@
     
         if (t_sv <= g%t) then
             call savedat(trim(path)//'f1.dat', f(:,:,1))
-            call savedat(trim(path)//'f2.dat', f(:,:,2))
+            !call savedat(trim(path)//'f2.dat', f(:,:,2))
             
             call MPI_File_Open(comm, trim(path)//'time.dat', &
                 MPI_MODE_WRonly + MPI_Mode_Append,  info, fh, ierr)
