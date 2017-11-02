@@ -195,10 +195,17 @@
     end if
     call MPI_File_Close(fh, ierr)
     
-    call MPI_File_Open(comm, path//'n.dat', amode,  info, fh, ierr)
+    call MPI_File_Open(comm, path//'f1.dat', amode,  info, fh, ierr)
     if (ierr .ne. MPI_SUCCESS) then
-        if (my_id == 0) call MPI_File_Delete(path//'n.dat', info, ierr);
-        call MPI_File_Open(comm, path//'n.dat', amode,  info, fh, ierr)
+        if (my_id == 0) call MPI_File_Delete(path//'f1.dat', info, ierr);
+        call MPI_File_Open(comm, path//'f1.dat', amode,  info, fh, ierr)
+    end if
+    call MPI_File_Close(fh, ierr)
+    
+    call MPI_File_Open(comm, path//'f2.dat', amode,  info, fh, ierr)
+    if (ierr .ne. MPI_SUCCESS) then
+        if (my_id == 0) call MPI_File_Delete(path//'f2.dat', info, ierr);
+        call MPI_File_Open(comm, path//'f2.dat', amode,  info, fh, ierr)
     end if
     call MPI_File_Close(fh, ierr)
     

@@ -1,7 +1,7 @@
 all: main
 
 COMPILER = mpifort
-COMPFLAG = -Wall -O3
+COMPFLAG = -Wall -Ofast
 PETSC = -I${PETSC_DIR}/include -I${PETSC_DIR}/arch-linux2-c-debug/include
 
 include ${PETSC_DIR}/lib/petsc/conf/variables
