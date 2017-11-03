@@ -1,4 +1,4 @@
-    module props
+module props
 #include <petsc/finclude/petscksp.h>
     use petscksp
     implicit none
@@ -20,7 +20,7 @@
     
     logical :: unif = .True.
     
-    contains
+contains
     
     ! *** Initialize Grid ***
     subroutine g_init(g, nx, ny, px, py, dof, l, w, path)
@@ -91,7 +91,7 @@
 
     if (g%ny > 1) then
         allocate( y(g%by+2), g%dy(g%by+1), g%dly(g%by) )
-        ytemp = 1.25 / float(g%ny+1)
+        ytemp = 2.5 / float(g%ny+1)
     
         if (unif) then
             do j = 1, g%by+2
@@ -266,5 +266,4 @@
     call MPI_File_Write_All(fh, dat, 1, core_array, stat, ierr)
     call MPI_File_Close(fh, ierr)
     end subroutine
-    
-    end module
+end module

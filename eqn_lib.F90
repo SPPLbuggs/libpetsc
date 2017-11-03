@@ -92,7 +92,7 @@
     
     end subroutine
     
-    subroutine calc_flux(n, p, mu, Te, dx, flx)
+    subroutine calc_flux2(n, p, mu, Te, dx, flx)
     real(8), intent(in)  :: n(2), p(2), mu, Te, dx
     real(8), intent(out) :: flx
     
@@ -100,7 +100,7 @@
                     - Te * log(n(2) / n(1))) / dx
     end subroutine
     
-    subroutine calc_flux2(n, p, mu, Te, dx, flx)
+    subroutine calc_flux(n, p, mu, Te, dx, flx)
     real(8), intent(in)  :: n(2), p(2), mu, Te, dx
     real(8), intent(out) :: flx
     real(8) :: v, tol, D, arg
