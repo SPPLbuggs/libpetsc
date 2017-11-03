@@ -147,9 +147,10 @@
     b_pert = 0
         
     k_start = 1
-    k_stop  = 3
+    k_stop  = 5
     
-    if (g%ny > 1) k_stop = 5
+    if (g%nx == 1) k_start = 3
+    if (g%ny == 1) k_stop  = 3
     
     do K = k_start, k_stop
         if ((K .eq. 1) .and. (g%type_x(i_loc-1,j_loc-1) .ge. 0)) then
